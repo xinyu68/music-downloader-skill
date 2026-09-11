@@ -1,6 +1,6 @@
 # Codex 音乐下载技能
 
-这是一个基于 [musicdl](https://github.com/CharlesPikachu/musicdl) 的 Codex 技能，可用于个人非商业场景下的一句话匿名搜索、自动选择、下载和音频信息检查。
+这是一个基于 [musicdl](https://github.com/CharlesPikachu/musicdl) 的 Codex 技能，可用于个人非商业场景下的匿名搜索、候选选择、下载和音频信息检查。
 
 ## 让智能体一句话安装
 
@@ -19,6 +19,17 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 安装完成后，可以对 Codex 说：
 
 > 帮我下载周杰伦的那天下雨了
+
+找到多个合理结果时，技能会先让用户选择，不会直接下载：
+
+```text
+1. 那天下雨了 | 歌手：周杰伦 | 格式：FLAC | 大小：46.22 MB | 时长：00:03:43 | 来源：酷我音乐
+2. 那天下雨了 | 歌手：周杰伦 | 格式：MP3  | 大小：8.52 MB  | 时长：00:03:43 | 来源：咪咕音乐
+
+请输入要下载的编号，例如 1 或 2。
+```
+
+用户回复 `1` 或 `2` 后，技能使用同一份候选清单下载对应文件。
 
 首次使用时，该技能会在自己的目录内创建隔离的 Python 运行环境，并安装锁定版本的 `musicdl` 依赖，不会污染系统 Python 环境。
 
@@ -43,7 +54,7 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 ## 主要功能
 
 - 默认匿名查询多个音乐平台并生成统一候选列表
-- 明确的“歌手 + 歌名”请求自动匹配并下载，存在实质性歧义时才询问
+- 多个可下载结果会列出编号、格式、大小、时长、码率和来源，用户回复编号后下载
 - 下载文件默认使用“歌曲名 - 歌手.扩展名”，重名时自动追加编号
 - 解析歌单并生成曲目清单
 - 检查音频格式、文件大小、时长、码率、采样率和声道数

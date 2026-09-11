@@ -21,6 +21,13 @@ DEFAULT_SOURCES = (
     "KuwoMusicClient",
     "QianqianMusicClient",
 )
+SOURCE_DISPLAY_NAMES = {
+    "MiguMusicClient": "咪咕音乐",
+    "NeteaseMusicClient": "网易云音乐",
+    "QQMusicClient": "QQ 音乐",
+    "KuwoMusicClient": "酷我音乐",
+    "QianqianMusicClient": "千千音乐",
+}
 CATALOG_VERSION = 1
 
 
@@ -219,17 +226,24 @@ def create_catalog(kind: str, query: str, sources: list[str], songs: list[Any]) 
 
 
 def print_items(items: list[dict[str, Any]]) -> None:
-    """输出便于用户选择的紧凑候选列表。"""
+    """输出带格式、大小和音频参数的编号候选列表。"""
     if not items:
         print("没有找到可下载的结果")
         return
+    print("可下载候选：")
     for item in items:
+        source = str(item.get("source") or "-")
         print(
             f"{item['number']:>3}. {item.get('song_name') or '-'} | "
-            f"{item.get('singers') or '-'} | {item.get('album') or '-'} | "
-            f"{item.get('ext') or '-'} | {item.get('file_size') or '-'} | "
-            f"{item.get('source') or '-'}"
+            f"歌手：{item.get('singers') or '-'} | "
+            f"专辑：{item.get('album') or '-'} | "
+            f"格式：{str(item.get('ext') or '-').upper()} | "
+            f"大小：{item.get('file_size') or '-'} | "
+            f"时长：{item.get('duration') or '-'} | "
+            f"码率：{item.get('bitrate') or '-'} | "
+            f"来源：{SOURCE_DISPLAY_NAMES.get(source, source)}"
         )
+    print("请输入要下载的编号，例如 1 或 2。")
 
 
 def run_check(_: argparse.Namespace) -> int:

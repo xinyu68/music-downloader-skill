@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -86,6 +88,34 @@ class MusicDlToolTests(unittest.TestCase):
         )
         for config in result["init_music_clients_cfg"].values():
             self.assertEqual(set(config), {"work_dir"})
+
+    def test_print_items_includes_selection_details_without_url(self) -> None:
+        items = [
+            {
+                "number": 1,
+                "song_name": "那天下雨了",
+                "singers": "周杰伦",
+                "album": "示例专辑",
+                "ext": "flac",
+                "file_size": "46.22 MB",
+                "duration": "00:03:43",
+                "bitrate": "1411 kbps",
+                "source": "KuwoMusicClient",
+                "download_url": "https://example.invalid/signed-audio",
+            }
+        ]
+        output = io.StringIO()
+        with redirect_stdout(output):
+            MODULE.print_items(items)
+
+        rendered = output.getvalue()
+        self.assertIn("格式：FLAC", rendered)
+        self.assertIn("大小：46.22 MB", rendered)
+        self.assertIn("时长：00:03:43", rendered)
+        self.assertIn("码率：1411 kbps", rendered)
+        self.assertIn("来源：酷我音乐", rendered)
+        self.assertIn("请输入要下载的编号", rendered)
+        self.assertNotIn("signed-audio", rendered)
 
 
 if __name__ == "__main__":

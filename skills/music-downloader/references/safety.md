@@ -1,23 +1,23 @@
-# Safety and usage boundaries
+# 安全与使用边界
 
-This skill is intended for personal, noncommercial handling of public-domain, openly licensed, user-owned, or otherwise authorized audio.
+本技能仅用于个人非商业场景，处理公有领域、开放许可、用户自有或通过其他方式获得合法授权的音频。
 
-`musicdl` is licensed under PolyForm Noncommercial 1.0.0. Keep its installation as an external dependency and preserve the upstream license terms. Do not represent this skill as granting rights to music obtained through a provider.
+`musicdl` 使用 PolyForm Noncommercial 1.0.0 许可证。应将其作为外部依赖安装并遵守上游许可证，不得宣称本技能会赋予用户对音乐平台内容的权利。
 
-## Access controls
+## 访问限制
 
-- Use only account permissions the user already has.
-- Do not bypass subscriptions, payment, DRM, regional restrictions, rate limits, or provider access controls.
-- Do not install Widevine keys, content decryption modules, account pools, leaked credentials, or wrapper servers to gain access.
-- If a provider returns only a preview for an unauthenticated account, report that limitation.
+- 只能使用用户账号已经拥有的权限
+- 不得绕过订阅、付费、DRM、地区限制、频率限制或平台访问控制
+- 不得为了获取访问权限而安装 Widevine 密钥、内容解密模块、账号池、泄露的凭证或中转服务器
+- 未登录账号只能获取试听片段时，应如实说明该限制
 
-## Third-party resolvers
+## 第三方解析服务
 
-Third-party resolvers receive at least the song identifier and the caller's network metadata. Their server-side account, cache, and licensing behavior cannot be verified from musicdl. Explain this uncertainty before using `--allow-third-party` and stop if the user does not accept it.
+第三方解析服务至少会收到歌曲标识和调用方的网络元数据。无法通过 musicdl 验证这些服务使用的账号、缓存和授权方式。使用 `--allow-third-party` 前要说明这种不确定性；用户不接受时停止使用第三方解析。
 
-## Local data
+## 本地数据
 
-- Store cookies outside the skill and repository.
-- Never echo cookie content, authorization headers, access tokens, or signed media URLs.
-- Catalogs contain short-lived media URLs. Keep them local, do not commit them, and remove them when no longer needed.
-- Preserve existing audio files by relying on musicdl's unique-name behavior.
+- Cookie 应保存在技能目录和代码仓库之外
+- 不得输出 Cookie 内容、认证请求头、访问令牌或带签名的媒体地址
+- 候选清单包含短期有效的媒体地址，只能保存在本地，不得提交；不再需要时应删除
+- 使用 musicdl 的唯一文件名机制保留已有音频文件

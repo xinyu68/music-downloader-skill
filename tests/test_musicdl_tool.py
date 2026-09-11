@@ -14,6 +14,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class MusicDlToolTests(unittest.TestCase):
+    """验证候选编号和清单读写等不依赖网络的核心行为。"""
+
     def test_parse_selection(self) -> None:
         self.assertEqual(MODULE.parse_selection("1,3-5,3", 5), [1, 3, 4, 5])
 

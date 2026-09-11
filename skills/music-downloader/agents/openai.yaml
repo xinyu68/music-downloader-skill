@@ -1,4 +1,4 @@
 interface:
-  display_name: "Music Downloader"
-  short_description: "Search and download music for personal use"
-  default_prompt: "Use $music-downloader to search for a song and download my selected result."
+  display_name: "音乐下载"
+  short_description: "搜索、选择、下载并检查个人音乐文件"
+  default_prompt: "使用 $music-downloader 搜索一首歌，列出候选项并下载我选择的结果。"

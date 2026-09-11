@@ -1,14 +1,14 @@
-# Codex 音乐下载 Skill
+# Codex 音乐下载技能
 
-这是一个基于 [musicdl](https://github.com/CharlesPikachu/musicdl) 的 Codex Skill，可用于个人非商业场景下的音乐搜索、选择、下载和音频信息检查。
+这是一个基于 [musicdl](https://github.com/CharlesPikachu/musicdl) 的 Codex 技能，可用于个人非商业场景下的音乐搜索、选择、下载和音频信息检查。
 
-## 让 Agent 一句话安装
+## 让智能体一句话安装
 
 直接对 Codex 说：
 
-> 从 https://github.com/xinyu68/music-downloader-skill/tree/main/skills/music-downloader 安装这个 skill
+> 从 https://github.com/xinyu68/music-downloader-skill/tree/main/skills/music-downloader 安装这个技能
 
-Codex 会通过标准 Skill 安装器识别该 GitHub 路径，并将其安装为 `music-downloader`。安装完成后，下一轮对话即可使用。
+Codex 会通过标准技能安装器识别该 GitHub 路径，并将其安装为 `music-downloader`。安装完成后，下一轮对话即可使用。
 
 ## 使用命令安装
 
@@ -20,7 +20,7 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 
 > 用 music-downloader 搜索一首歌，列出结果让我选择后下载
 
-首次使用时，Skill 会在自己的目录内创建隔离的 Python 运行环境，并安装锁定版本的 `musicdl` 依赖，不会污染系统 Python 环境。
+首次使用时，该技能会在自己的目录内创建隔离的 Python 运行环境，并安装锁定版本的 `musicdl` 依赖，不会污染系统 Python 环境。
 
 ## 主要功能
 

@@ -30,6 +30,41 @@ class MusicDlToolTests(unittest.TestCase):
             MODULE.save_json(path, value)
             self.assertEqual(MODULE.load_json(path), value)
 
+    def test_build_readable_media_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = MODULE.build_unique_media_path(
+                Path(directory), "那天下雨了", "周杰伦", "550531860", ".flac"
+            )
+            self.assertEqual(path.name, "那天下雨了 - 周杰伦.flac")
+
+    def test_media_path_does_not_overwrite_existing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory)
+            existing = output_dir / "歌曲 - 歌手.mp3"
+            existing.touch()
+            path = MODULE.build_unique_media_path(
+                output_dir, "歌曲", "歌手", "123", "mp3"
+            )
+            self.assertEqual(path.name, "歌曲 - 歌手 (1).mp3")
+
+    def test_media_paths_are_unique_within_same_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            reserved_paths: set[str] = set()
+            first = MODULE.build_unique_media_path(
+                Path(directory), "歌曲", "歌手", "123", "mp3", reserved_paths
+            )
+            second = MODULE.build_unique_media_path(
+                Path(directory), "歌曲", "歌手", "456", "mp3", reserved_paths
+            )
+            self.assertEqual(first.name, "歌曲 - 歌手.mp3")
+            self.assertEqual(second.name, "歌曲 - 歌手 (1).mp3")
+
+    def test_filename_replaces_invalid_characters(self) -> None:
+        path = MODULE.build_unique_media_path(
+            Path("downloads"), '歌:曲?名', '歌/手*名', "123", "flac"
+        )
+        self.assertEqual(path.name, "歌_曲_名 - 歌_手_名.flac")
+
 
 if __name__ == "__main__":
     unittest.main()

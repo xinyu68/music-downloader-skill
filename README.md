@@ -22,10 +22,29 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 
 首次使用时，该技能会在自己的目录内创建隔离的 Python 运行环境，并安装锁定版本的 `musicdl` 依赖，不会污染系统 Python 环境。
 
+## 更新技能
+
+已安装的技能不会随 GitHub 仓库自动更新。需要更新时，直接对 Codex 说：
+
+> 将已安装的 music-downloader 更新为 https://github.com/xinyu68/music-downloader-skill/tree/main/skills/music-downloader 的最新版本
+
+标准安装器为了保护已有文件，不会覆盖同名技能，因此手动更新时需要删除旧目录后重新安装：
+
+```powershell
+$SkillPath = Join-Path $env:USERPROFILE '.codex\skills\music-downloader'
+if (Test-Path -LiteralPath $SkillPath) {
+    Remove-Item -LiteralPath $SkillPath -Recurse -Force
+}
+python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --repo xinyu68/music-downloader-skill --path skills/music-downloader
+```
+
+更新会重新创建首次运行所需的隔离环境。Cookie 文件应始终保存在技能目录之外，因此正常更新不会影响 Cookie。更新完成后，在下一轮对话中使用新版本。
+
 ## 主要功能
 
 - 搜索一个或多个音乐平台并生成统一的候选列表
 - 按编号选择并下载歌曲
+- 下载文件默认使用“歌曲名 - 歌手.扩展名”，重名时自动追加编号
 - 解析歌单并生成曲目清单
 - 检查音频格式、文件大小、时长、码率、采样率和声道数
 - 支持通过本地 JSON 文件提供用户自己的 Cookie

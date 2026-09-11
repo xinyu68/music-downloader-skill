@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -95,6 +96,39 @@ def parse_selection(value: str, maximum: int) -> list[int]:
     if not selected:
         raise ValueError("没有选择任何候选编号")
     return sorted(selected)
+
+
+def safe_filename_component(value: Any, fallback: str) -> str:
+    """清理文件名片段，并保留便于识别的中文、字母和数字。"""
+    text = str(value or "").strip()
+    if text.lower() in {"", "null", "none"}:
+        text = fallback
+    text = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", text)
+    text = re.sub(r"\s+", " ", text).strip(" .")
+    return (text or fallback)[:80].rstrip(" .")
+
+
+def build_unique_media_path(
+    output_dir: Path,
+    song_name: Any,
+    singers: Any,
+    identifier: Any,
+    extension: Any,
+    reserved_paths: set[str] | None = None,
+) -> Path:
+    """生成“歌曲名 - 歌手”文件名，并避让已有文件和本批次预留路径。"""
+    reserved_paths = reserved_paths if reserved_paths is not None else set()
+    title = safe_filename_component(song_name, "未知歌曲")
+    artist = safe_filename_component(singers, str(identifier or "未知歌手"))
+    ext = re.sub(r"[^A-Za-z0-9]", "", str(extension or "bin").lstrip(".")) or "bin"
+    stem = f"{title} - {artist}"
+    candidate = output_dir / f"{stem}.{ext}"
+    index = 1
+    while candidate.exists() or str(candidate).casefold() in reserved_paths:
+        candidate = output_dir / f"{stem} ({index}).{ext}"
+        index += 1
+    reserved_paths.add(str(candidate).casefold())
+    return candidate
 
 
 def load_cookie_map(path_text: str | None) -> dict[str, dict[str, str]]:
@@ -324,11 +358,24 @@ def run_download(args: argparse.Namespace) -> int:
     client = make_client(sources, output_dir, cookie_map)
     _, SongInfo = require_musicdl()
     songs = []
+    reserved_paths: set[str] = set()
     for item in selected:
         payload = {key: value for key, value in item.items() if key != "number"}
         payload["work_dir"] = str(output_dir)
         payload["default_download_cookies"] = cookie_map.get(str(item["source"]), {})
-        songs.append(SongInfo.fromdict(payload))
+        song = SongInfo.fromdict(payload)
+        # musicdl 默认使用平台歌曲 ID 命名；这里改为便于用户识别的歌名和歌手。
+        song._save_path = str(
+            build_unique_media_path(
+                output_dir,
+                item.get("song_name"),
+                item.get("singers"),
+                item.get("identifier"),
+                item.get("ext"),
+                reserved_paths,
+            )
+        )
+        songs.append(song)
     downloaded = client.download(songs)
     result = {
         "requested": len(songs),

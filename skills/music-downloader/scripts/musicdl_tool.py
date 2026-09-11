@@ -10,7 +10,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 # 默认只选择常用的中国大陆音乐源，避免无目的地请求全部平台。
@@ -21,8 +21,6 @@ DEFAULT_SOURCES = (
     "KuwoMusicClient",
     "QianqianMusicClient",
 )
-# 这些音乐源在没有用户 Cookie 时可能调用第三方解析服务。
-THIRD_PARTY_FALLBACK_SOURCES = {"NeteaseMusicClient", "QQMusicClient"}
 CATALOG_VERSION = 1
 
 
@@ -131,24 +129,6 @@ def build_unique_media_path(
     return candidate
 
 
-def load_cookie_map(path_text: str | None) -> dict[str, dict[str, str]]:
-    """读取按客户端名称分组的 Cookie，但不输出任何敏感值。"""
-    if not path_text:
-        return {}
-    path = Path(path_text).expanduser().resolve()
-    data = load_json(path)
-    if not isinstance(data, dict):
-        raise ValueError("Cookie 文件必须包含 JSON 对象")
-    result: dict[str, dict[str, str]] = {}
-    for source, cookies in data.items():
-        if not isinstance(source, str) or not isinstance(cookies, dict):
-            raise ValueError("Cookie 文件必须把音乐源名称映射到 Cookie 对象")
-        if not all(isinstance(key, str) and isinstance(value, str) for key, value in cookies.items()):
-            raise ValueError(f"{source} 的 Cookie 键和值都必须是字符串")
-        result[source] = cookies
-    return result
-
-
 def require_musicdl() -> tuple[Any, Any]:
     """延迟导入 musicdl，让帮助命令在未安装依赖时仍可使用。"""
     try:
@@ -161,41 +141,13 @@ def require_musicdl() -> tuple[Any, Any]:
     return musicdl, SongInfo
 
 
-def guard_third_party(sources: Iterable[str], cookie_map: dict[str, dict[str, str]], allowed: bool) -> None:
-    """阻止在用户未明确允许时调用第三方解析服务。"""
-    unauthenticated = sorted(
-        source for source in sources if source in THIRD_PARTY_FALLBACK_SOURCES and not cookie_map.get(source)
-    )
-    if unauthenticated and not allowed:
-        joined = ", ".join(unauthenticated)
-        raise RuntimeError(
-            f"{joined} 在没有用户 Cookie 时可能调用第三方解析接口。"
-            "请提供 --cookies-file，或明确添加 --allow-third-party。"
-        )
-
-
-def client_config(sources: list[str], output_dir: Path, cookie_map: dict[str, dict[str, str]]) -> dict[str, dict[str, Any]]:
-    """构造 musicdl 客户端配置，并把同一份用户 Cookie 用于搜索、解析和下载。"""
-    config: dict[str, dict[str, Any]] = {}
-    for source in sources:
-        source_config: dict[str, Any] = {"work_dir": str(output_dir)}
-        if cookies := cookie_map.get(source):
-            source_config.update(
-                default_search_cookies=dict(cookies),
-                default_download_cookies=dict(cookies),
-                default_parse_cookies=dict(cookies),
-            )
-        config[source] = source_config
-    return config
-
-
-def make_client(sources: list[str], output_dir: Path, cookie_map: dict[str, dict[str, str]]) -> Any:
-    """创建限定音乐源和输出目录的 musicdl 客户端。"""
+def make_client(sources: list[str], output_dir: Path) -> Any:
+    """创建匿名访问、限定音乐源和输出目录的 musicdl 客户端。"""
     musicdl_module, _ = require_musicdl()
     output_dir.mkdir(parents=True, exist_ok=True)
     return musicdl_module.MusicClient(
         music_sources=sources,
-        init_music_clients_cfg=client_config(sources, output_dir, cookie_map),
+        init_music_clients_cfg={source: {"work_dir": str(output_dir)} for source in sources},
     )
 
 
@@ -300,19 +252,17 @@ def run_check(_: argparse.Namespace) -> int:
     return 0 if status["musicdl"] else 2
 
 
-def common_context(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, dict[str, str]]]:
+def common_context(args: argparse.Namespace) -> tuple[list[str], Path]:
     """整理搜索和歌单命令共用的运行参数。"""
     sources = parse_sources(args.sources)
     output_dir = Path(args.output_dir).expanduser().resolve()
-    cookie_map = load_cookie_map(args.cookies_file)
-    guard_third_party(sources, cookie_map, args.allow_third_party)
-    return sources, output_dir, cookie_map
+    return sources, output_dir
 
 
 def run_search(args: argparse.Namespace) -> int:
     """搜索歌曲并写入候选清单。"""
-    sources, output_dir, cookie_map = common_context(args)
-    client = make_client(sources, output_dir, cookie_map)
+    sources, output_dir = common_context(args)
+    client = make_client(sources, output_dir)
     songs = flatten_results(client.search(keyword=args.query))
     catalog = create_catalog("search", args.query, sources, songs)
     catalog_path = Path(args.catalog).expanduser().resolve()
@@ -324,8 +274,8 @@ def run_search(args: argparse.Namespace) -> int:
 
 def run_playlist(args: argparse.Namespace) -> int:
     """解析歌单并写入候选清单。"""
-    sources, output_dir, cookie_map = common_context(args)
-    client = make_client(sources, output_dir, cookie_map)
+    sources, output_dir = common_context(args)
+    client = make_client(sources, output_dir)
     songs = flatten_results(client.parseplaylist(args.url))
     catalog = create_catalog("playlist", args.url, sources, songs)
     catalog_path = Path(args.catalog).expanduser().resolve()
@@ -353,16 +303,13 @@ def run_download(args: argparse.Namespace) -> int:
     selected = [items[number - 1] for number in selected_numbers]
     sources = list(dict.fromkeys(str(item["source"]) for item in selected))
     output_dir = Path(args.output_dir).expanduser().resolve()
-    cookie_map = load_cookie_map(args.cookies_file)
-    guard_third_party(sources, cookie_map, args.allow_third_party)
-    client = make_client(sources, output_dir, cookie_map)
+    client = make_client(sources, output_dir)
     _, SongInfo = require_musicdl()
     songs = []
     reserved_paths: set[str] = set()
     for item in selected:
         payload = {key: value for key, value in item.items() if key != "number"}
         payload["work_dir"] = str(output_dir)
-        payload["default_download_cookies"] = cookie_map.get(str(item["source"]), {})
         song = SongInfo.fromdict(payload)
         # musicdl 默认使用平台歌曲 ID 命名；这里改为便于用户识别的歌名和歌手。
         song._save_path = str(
@@ -428,12 +375,6 @@ def add_network_options(parser: argparse.ArgumentParser) -> None:
     """为需要网络请求的子命令添加公共参数。"""
     parser.add_argument("--sources", help="以英文逗号分隔的 musicdl 客户端名称")
     parser.add_argument("--output-dir", default="music-downloads", help="音乐文件输出目录")
-    parser.add_argument("--cookies-file", help="按客户端名称保存 Cookie 的本地 JSON 文件")
-    parser.add_argument(
-        "--allow-third-party",
-        action="store_true",
-        help="没有用户 Cookie 时允许调用第三方解析服务",
-    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -464,8 +405,6 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--select", help="候选编号或范围，例如 1,3-5")
     group.add_argument("--all", action="store_true", help="下载清单中的全部项目")
     download.add_argument("--output-dir", default="music-downloads", help="音乐文件输出目录")
-    download.add_argument("--cookies-file", help="按客户端名称保存 Cookie 的本地 JSON 文件")
-    download.add_argument("--allow-third-party", action="store_true", help="允许使用第三方解析服务")
     download.set_defaults(handler=run_download)
 
     inspect_parser = subparsers.add_parser("inspect", help="检查本地音频文件")

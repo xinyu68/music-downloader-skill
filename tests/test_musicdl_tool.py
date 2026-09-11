@@ -4,6 +4,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT = Path(__file__).parents[1] / "skills" / "music-downloader" / "scripts" / "musicdl_tool.py"
@@ -64,6 +65,27 @@ class MusicDlToolTests(unittest.TestCase):
             Path("downloads"), '歌:曲?名', '歌/手*名', "123", "flac"
         )
         self.assertEqual(path.name, "歌_曲_名 - 歌_手_名.flac")
+
+    def test_client_uses_anonymous_source_configuration(self) -> None:
+        class FakeMusicDlModule:
+            @staticmethod
+            def MusicClient(**kwargs):
+                return kwargs
+
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(
+                MODULE, "require_musicdl", return_value=(FakeMusicDlModule, None)
+            ):
+                result = MODULE.make_client(
+                    ["NeteaseMusicClient", "QQMusicClient"], Path(directory)
+                )
+
+        self.assertEqual(
+            set(result["init_music_clients_cfg"]),
+            {"NeteaseMusicClient", "QQMusicClient"},
+        )
+        for config in result["init_music_clients_cfg"].values():
+            self.assertEqual(set(config), {"work_dir"})
 
 
 if __name__ == "__main__":

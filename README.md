@@ -1,6 +1,6 @@
 # Codex 音乐下载技能
 
-这是一个基于 [musicdl](https://github.com/CharlesPikachu/musicdl) 的 Codex 技能，可用于个人非商业场景下的音乐搜索、选择、下载和音频信息检查。
+这是一个基于 [musicdl](https://github.com/CharlesPikachu/musicdl) 的 Codex 技能，可用于个人非商业场景下的一句话匿名搜索、自动选择、下载和音频信息检查。
 
 ## 让智能体一句话安装
 
@@ -18,7 +18,7 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 
 安装完成后，可以对 Codex 说：
 
-> 用 music-downloader 搜索一首歌，列出结果让我选择后下载
+> 帮我下载周杰伦的那天下雨了
 
 首次使用时，该技能会在自己的目录内创建隔离的 Python 运行环境，并安装锁定版本的 `musicdl` 依赖，不会污染系统 Python 环境。
 
@@ -38,24 +38,26 @@ if (Test-Path -LiteralPath $SkillPath) {
 python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --repo xinyu68/music-downloader-skill --path skills/music-downloader
 ```
 
-更新会重新创建首次运行所需的隔离环境。Cookie 文件应始终保存在技能目录之外，因此正常更新不会影响 Cookie。更新完成后，在下一轮对话中使用新版本。
+更新会重新创建首次运行所需的隔离环境。更新完成后，在下一轮对话中使用新版本。
 
 ## 主要功能
 
-- 搜索一个或多个音乐平台并生成统一的候选列表
-- 按编号选择并下载歌曲
+- 默认匿名查询多个音乐平台并生成统一候选列表
+- 明确的“歌手 + 歌名”请求自动匹配并下载，存在实质性歧义时才询问
 - 下载文件默认使用“歌曲名 - 歌手.扩展名”，重名时自动追加编号
 - 解析歌单并生成曲目清单
 - 检查音频格式、文件大小、时长、码率、采样率和声道数
-- 支持通过本地 JSON 文件提供用户自己的 Cookie
 - 支持保存歌词、封面和基础音频标签
 - 已有文件默认不覆盖
-- 第三方解析服务必须显式允许后才会调用
+- 不读取浏览器 Cookie，也不接收账号密码或访问令牌
+- 网易云和 QQ 音乐在匿名模式下可能使用 `musicdl` 内置的第三方解析服务
 
 ## 使用范围
 
 本项目仅面向个人非商业用途，不包含任何音乐文件、平台账号凭证，也没有复制 `musicdl` 的源代码。
 
 本项目不授权绕过 DRM、付费、订阅、地区限制或账号访问控制。请仅下载公有领域、开放许可、自己拥有或已获得合法访问权限的音频内容。
+
+匿名第三方解析服务可能收到歌曲标识和调用方的网络元数据，其可用性、账号来源和授权方式无法由本项目验证。如果不接受第三方服务，应明确要求仅查询咪咕、酷我或千千音乐。
 
 上游 `musicdl` 采用 [PolyForm Noncommercial License 1.0.0](https://github.com/CharlesPikachu/musicdl/blob/master/LICENSE)，使用时需要同时遵守其许可证和相关音乐平台的服务条款。

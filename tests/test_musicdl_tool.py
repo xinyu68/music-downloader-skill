@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -116,6 +117,78 @@ class MusicDlToolTests(unittest.TestCase):
         self.assertIn("来源：酷我音乐", rendered)
         self.assertIn("请输入要下载的编号", rendered)
         self.assertNotIn("signed-audio", rendered)
+
+    def test_shortlist_renumbers_sparse_candidates(self) -> None:
+        catalog = {
+            "catalog_version": 1,
+            "kind": "search",
+            "query": "邓紫棋 海阔天空",
+            "sources": ["KuwoMusicClient", "QQMusicClient", "MiguMusicClient"],
+            "items": [
+                {
+                    "number": number,
+                    "identifier": f"song-{number}",
+                    "source": "MiguMusicClient",
+                }
+                for number in range(1, 18)
+            ],
+        }
+
+        shortlist = MODULE.create_shortlist(catalog, [1, 7, 12, 17])
+
+        self.assertEqual(
+            [item["number"] for item in shortlist["items"]],
+            [1, 2, 3, 4],
+        )
+        self.assertEqual(
+            [item["original_number"] for item in shortlist["items"]],
+            [1, 7, 12, 17],
+        )
+        self.assertEqual(shortlist["items"][2]["identifier"], "song-12")
+
+    def test_nested_shortlist_preserves_original_number(self) -> None:
+        catalog = {
+            "catalog_version": 1,
+            "kind": "shortlist",
+            "items": [
+                {"number": 1, "original_number": 12, "source": "MiguMusicClient"},
+                {"number": 2, "original_number": 17, "source": "NeteaseMusicClient"},
+            ],
+        }
+
+        shortlist = MODULE.create_shortlist(catalog, [2])
+
+        self.assertEqual(shortlist["items"][0]["number"], 1)
+        self.assertEqual(shortlist["items"][0]["original_number"], 17)
+
+    def test_run_shortlist_writes_contiguous_catalog(self) -> None:
+        catalog = {
+            "catalog_version": 1,
+            "kind": "search",
+            "query": "测试歌曲",
+            "items": [
+                {"number": number, "source": "MiguMusicClient"}
+                for number in range(1, 5)
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "search.json"
+            shortlist_path = Path(directory) / "shortlist.json"
+            MODULE.save_json(catalog_path, catalog)
+            args = SimpleNamespace(
+                catalog=str(catalog_path),
+                select="2,4",
+                output=str(shortlist_path),
+            )
+            with redirect_stdout(io.StringIO()):
+                exit_code = MODULE.run_shortlist(args)
+            saved = MODULE.load_json(shortlist_path)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual([item["number"] for item in saved["items"]], [1, 2])
+        self.assertEqual(
+            [item["original_number"] for item in saved["items"]], [2, 4]
+        )
 
 
 if __name__ == "__main__":

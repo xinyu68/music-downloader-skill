@@ -1,28 +1,14 @@
-# 音乐源与身份认证
+# 音乐源与匿名解析
 
 使用 `--sources` 时必须填写准确的 musicdl 客户端名称。
 
 默认客户端为 `MiguMusicClient`、`NeteaseMusicClient`、`QQMusicClient`、`KuwoMusicClient` 和 `QianqianMusicClient`。用户指定平台时应缩小客户端范围，以减少等待时间和不必要的网络请求。
 
-## Cookie 文件
+## 匿名模式
 
-Cookie 文件是保存在本地的 JSON 对象，以 musicdl 客户端名称作为键：
+本技能不登录音乐平台、不读取浏览器 Cookie，也不接收账号密码或访问令牌。所有默认音乐源都以匿名方式请求。
 
-```json
-{
-  "NeteaseMusicClient": {
-    "MUSIC_U": "替换为用户自己的 Cookie"
-  },
-  "QQMusicClient": {
-    "uin": "替换为用户自己的 Cookie",
-    "qm_keyst": "替换为用户自己的 Cookie"
-  }
-}
-```
-
-不得提交此文件，也不得在工具输出或对话中展示其中的值。只能通过 `--cookies-file` 传入文件路径。
-
-提供用户 Cookie 后，网易云和 QQ 音乐适配器会优先使用需要登录的官方接口。未提供 Cookie 时，只有显式添加 `--allow-third-party` 才能尝试第三方解析服务。
+网易云和 QQ 音乐适配器可能把歌曲标识发送给 `musicdl` 当前版本内置的第三方解析服务，以尝试取得匿名可访问的媒体地址。第三方服务不稳定，失败时继续检查其他默认音乐源；不要尝试登录、解密或绕过访问限制。
 
 ## 复杂音乐源
 

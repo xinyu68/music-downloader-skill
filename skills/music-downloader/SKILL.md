@@ -21,9 +21,9 @@ description: "基于 musicdl 匿名搜索、列出候选、按编号下载和检
 
 ## 工作流程
 
-1. 用户要求下载歌曲时先运行 `search`，从结果中保留歌名和歌手匹配且具有可下载地址的候选
-2. 找到多个合理候选时，必须展示编号、歌名、歌手、专辑、格式、大小、时长、码率和来源，不得代替用户选择，也不得展示媒体直链
-3. 明确提示用户回复 `1`、`2` 等编号；收到编号后使用同一份候选清单运行 `download`。编号无效时重新提示，媒体地址过期时重新搜索
+1. 用户要求下载歌曲时先运行 `search`，从结果中找出歌名和歌手匹配且具有可下载地址的原始编号
+2. 找到多个合理候选时，必须将这些原始编号传给 `shortlist` 生成新的短名单。只展示 `shortlist` 输出的连续编号、歌名、歌手、专辑、格式、大小、时长、码率和来源，不得在对话中自行重新编号，也不得展示媒体直链
+3. 明确提示用户回复 `1`、`2` 等短名单编号；收到编号后必须使用短名单文件运行 `download`，不得再把编号应用到原始搜索清单。编号无效时重新提示，媒体地址过期时重新搜索并重建短名单
 4. 只有一个合理候选时可以直接下载；包含不同歌手、现场版、伴奏、翻唱或重混等情况时，即使格式相同也要让用户选择
 5. 收到歌单链接时，先运行 `playlist` 生成清单并报告曲目数量，确认下载范围后再下载
 6. 下载后对所选文件运行 `inspect`，最后报告工具返回的真实文件名、绝对路径以及下载失败的项目
@@ -34,7 +34,8 @@ description: "基于 musicdl 匿名搜索、列出候选、按编号下载和检
 
 ```text
 <运行环境-python> <SKILL_DIR>/scripts/musicdl_tool.py search "歌曲名或歌手名" --catalog search.json --output-dir downloads
-<运行环境-python> <SKILL_DIR>/scripts/musicdl_tool.py download --catalog search.json --select 1 --output-dir downloads
+<运行环境-python> <SKILL_DIR>/scripts/musicdl_tool.py shortlist --catalog search.json --select 1,7,12,17 --output shortlist.json
+<运行环境-python> <SKILL_DIR>/scripts/musicdl_tool.py download --catalog shortlist.json --select 1 --output-dir downloads
 <运行环境-python> <SKILL_DIR>/scripts/musicdl_tool.py playlist "歌单地址" --catalog playlist.json --output-dir downloads
 <运行环境-python> <SKILL_DIR>/scripts/musicdl_tool.py inspect "downloads/song.flac"
 ```

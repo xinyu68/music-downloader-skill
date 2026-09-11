@@ -308,6 +308,52 @@ def validate_catalog(data: Any) -> dict[str, Any]:
     return data
 
 
+def create_shortlist(catalog: dict[str, Any], selected_numbers: list[int]) -> dict[str, Any]:
+    """从完整清单提取候选，并重新编号为连续的 1..N。"""
+    items = catalog["items"]
+    shortlisted_items: list[dict[str, Any]] = []
+    for display_number, source_number in enumerate(selected_numbers, start=1):
+        item = dict(items[source_number - 1])
+        item["original_number"] = item.get("original_number", item.get("number", source_number))
+        item["number"] = display_number
+        shortlisted_items.append(item)
+
+    sources = list(
+        dict.fromkeys(
+            str(item.get("source"))
+            for item in shortlisted_items
+            if item.get("source")
+        )
+    )
+    return {
+        "catalog_version": CATALOG_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "kind": "shortlist",
+        "parent_kind": catalog.get("kind"),
+        "query": catalog.get("query"),
+        "sources": sources,
+        "selected_from": selected_numbers,
+        "skipped_non_url_items": 0,
+        "items": shortlisted_items,
+    }
+
+
+def run_shortlist(args: argparse.Namespace) -> int:
+    """从完整候选清单生成连续编号的用户短名单。"""
+    catalog_path = Path(args.catalog).expanduser().resolve()
+    output_path = Path(args.output).expanduser().resolve()
+    if output_path == catalog_path:
+        raise ValueError("短名单输出路径不能覆盖原始候选清单")
+
+    catalog = validate_catalog(load_json(catalog_path))
+    selected_numbers = parse_selection(args.select, len(catalog["items"]))
+    shortlist = create_shortlist(catalog, selected_numbers)
+    save_json(output_path, shortlist)
+    print_items(shortlist["items"])
+    print(f"短名单：{output_path}")
+    return 0
+
+
 def run_download(args: argparse.Namespace) -> int:
     """重建所选歌曲信息并交给对应的 musicdl 客户端下载。"""
     catalog_path = Path(args.catalog).expanduser().resolve()
@@ -322,7 +368,11 @@ def run_download(args: argparse.Namespace) -> int:
     songs = []
     reserved_paths: set[str] = set()
     for item in selected:
-        payload = {key: value for key, value in item.items() if key != "number"}
+        payload = {
+            key: value
+            for key, value in item.items()
+            if key not in {"number", "original_number"}
+        }
         payload["work_dir"] = str(output_dir)
         song = SongInfo.fromdict(payload)
         # musicdl 默认使用平台歌曲 ID 命名；这里改为便于用户识别的歌名和歌手。
@@ -412,6 +462,12 @@ def build_parser() -> argparse.ArgumentParser:
     playlist.add_argument("--catalog", default="music-playlist-results.json", help="候选清单输出路径")
     add_network_options(playlist)
     playlist.set_defaults(handler=run_playlist)
+
+    shortlist = subparsers.add_parser("shortlist", help="筛选候选并重新编号为连续短名单")
+    shortlist.add_argument("--catalog", required=True, help="搜索或歌单命令生成的完整候选清单")
+    shortlist.add_argument("--select", required=True, help="要保留的原始编号，例如 1,7,12,17")
+    shortlist.add_argument("--output", default="music-shortlist.json", help="重新编号后的短名单输出路径")
+    shortlist.set_defaults(handler=run_shortlist)
 
     download = subparsers.add_parser("download", help="下载候选清单中的指定项目")
     download.add_argument("--catalog", required=True, help="搜索或歌单命令生成的候选清单")

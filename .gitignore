@@ -1,0 +1,9 @@
+**/.runtime/
+**/__pycache__/
+.test-artifacts/
+*.py[cod]
+*.json.tmp
+music-downloads/
+music-search-results.json
+music-playlist-results.json
+cookies.json

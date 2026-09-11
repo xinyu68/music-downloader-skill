@@ -1,0 +1,4 @@
+interface:
+  display_name: "Music Downloader"
+  short_description: "Search and download music for personal use"
+  default_prompt: "Use $music-downloader to search for a song and download my selected result."

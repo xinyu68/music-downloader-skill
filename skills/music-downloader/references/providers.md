@@ -2,13 +2,15 @@
 
 使用 `--sources` 时必须填写准确的 musicdl 客户端名称。
 
-默认客户端为 `MiguMusicClient`、`NeteaseMusicClient`、`QQMusicClient`、`KuwoMusicClient` 和 `QianqianMusicClient`。用户指定平台时应缩小客户端范围，以减少等待时间和不必要的网络请求。
+默认客户端为 `MiguMusicClient`、`NeteaseMusicClient`、`QQMusicClient`、`KuwoMusicClient`、`QianqianMusicClient` 和 `GDStudioMusicClient`。用户指定平台时应缩小客户端范围，以减少等待时间和不必要的网络请求。
 
 ## 匿名模式
 
 本技能不登录音乐平台、不读取浏览器 Cookie，也不接收账号密码或访问令牌。所有默认音乐源都以匿名方式请求。
 
-网易云、QQ 音乐和酷我音乐适配器可能把歌曲标识发送给 `musicdl` 当前版本内置的第三方解析服务，以尝试取得匿名可访问的媒体地址。第三方服务不稳定，失败时继续检查其他默认音乐源；不要尝试登录、解密或绕过访问限制。
+`GDStudioMusicClient` 直接查询 GD 音乐台的第三方聚合接口；当前锁定版本默认聚合网易云、JOOX、TIDAL、Qobuz、Apple Music 和哔哩哔哩，并把实际子源保存在候选的 `root_source` 字段中。候选列表应显示为“GD 音乐台（子源）”，以便与直接平台结果区分。
+
+网易云、QQ 音乐和酷我音乐适配器也可能把歌曲标识发送给 `musicdl` 当前版本内置的第三方解析服务，以尝试取得匿名可访问的媒体地址。第三方服务不稳定，失败时继续检查其他默认音乐源；不要尝试登录、解密或绕过访问限制。
 
 当前锁定的 `musicdl==2.13.11` 中，咪咕和千千音乐适配器没有显式的第三方解析流程。该结论只适用于当前锁定版本；升级上游依赖时需要重新核对各适配器实现。
 

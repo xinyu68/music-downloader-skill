@@ -20,6 +20,7 @@ DEFAULT_SOURCES = (
     "QQMusicClient",
     "KuwoMusicClient",
     "QianqianMusicClient",
+    "GDStudioMusicClient",
 )
 SOURCE_DISPLAY_NAMES = {
     "MiguMusicClient": "咪咕音乐",
@@ -27,6 +28,19 @@ SOURCE_DISPLAY_NAMES = {
     "QQMusicClient": "QQ 音乐",
     "KuwoMusicClient": "酷我音乐",
     "QianqianMusicClient": "千千音乐",
+    "GDStudioMusicClient": "GD 音乐台",
+}
+GDSTUDIO_ROOT_SOURCE_DISPLAY_NAMES = {
+    "netease": "网易云音乐",
+    "joox": "JOOX",
+    "tidal": "TIDAL",
+    "qobuz": "Qobuz",
+    "apple": "Apple Music",
+    "bilibili": "哔哩哔哩",
+    "ytmusic": "YouTube Music",
+    "spotify": "Spotify",
+    "kuwo": "酷我音乐",
+    "tencent": "QQ 音乐",
 }
 CATALOG_VERSION = 1
 
@@ -233,6 +247,11 @@ def print_items(items: list[dict[str, Any]]) -> None:
     print("可下载候选：")
     for item in items:
         source = str(item.get("source") or "-")
+        source_name = SOURCE_DISPLAY_NAMES.get(source, source)
+        if source == "GDStudioMusicClient" and item.get("root_source"):
+            root_source = str(item["root_source"])
+            root_name = GDSTUDIO_ROOT_SOURCE_DISPLAY_NAMES.get(root_source, root_source)
+            source_name = f"{source_name}（{root_name}）"
         print(
             f"{item['number']:>3}. {item.get('song_name') or '-'} | "
             f"歌手：{item.get('singers') or '-'} | "
@@ -241,7 +260,7 @@ def print_items(items: list[dict[str, Any]]) -> None:
             f"大小：{item.get('file_size') or '-'} | "
             f"时长：{item.get('duration') or '-'} | "
             f"码率：{item.get('bitrate') or '-'} | "
-            f"来源：{SOURCE_DISPLAY_NAMES.get(source, source)}"
+            f"来源：{source_name}"
         )
     print("请输入要下载的编号，例如 1 或 2。")
 

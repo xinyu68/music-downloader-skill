@@ -55,7 +55,7 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 
 ## 主要功能
 
-- 默认匿名查询多个音乐平台并生成统一候选列表
+- 默认匿名查询多个音乐平台及 GD 音乐台聚合源，并生成统一候选列表
 - 多个可下载结果会列出编号、格式、大小、时长、码率和来源，用户回复编号后下载
 - 匹配结果会生成独立的连续编号短名单，避免筛选后的序号与原始清单错位
 - 下载文件默认使用“歌曲名 - 歌手.扩展名”，重名时自动追加编号
@@ -64,7 +64,7 @@ python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-s
 - 支持保存歌词、封面和基础音频标签
 - 已有文件默认不覆盖
 - 不读取浏览器 Cookie，也不接收账号密码或访问令牌
-- 网易云、QQ 音乐和酷我音乐在匿名模式下可能使用 `musicdl` 内置的第三方解析服务
+- GD 音乐台作为默认第三方聚合源参与查询；网易云、QQ 音乐和酷我音乐也可能使用 `musicdl` 内置的第三方解析服务
 
 ## 使用范围
 

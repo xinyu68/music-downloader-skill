@@ -23,6 +23,13 @@ class MusicDlToolTests(unittest.TestCase):
     def test_parse_selection(self) -> None:
         self.assertEqual(MODULE.parse_selection("1,3-5,3", 5), [1, 3, 4, 5])
 
+    def test_default_sources_include_gdstudio(self) -> None:
+        self.assertIn("GDStudioMusicClient", MODULE.DEFAULT_SOURCES)
+        self.assertEqual(
+            MODULE.SOURCE_DISPLAY_NAMES["GDStudioMusicClient"],
+            "GD 音乐台",
+        )
+
     def test_reject_invalid_selection(self) -> None:
         with self.assertRaises(ValueError):
             MODULE.parse_selection("0,2", 3)
@@ -117,6 +124,26 @@ class MusicDlToolTests(unittest.TestCase):
         self.assertIn("来源：酷我音乐", rendered)
         self.assertIn("请输入要下载的编号", rendered)
         self.assertNotIn("signed-audio", rendered)
+
+    def test_print_items_shows_gdstudio_root_source(self) -> None:
+        items = [
+            {
+                "number": 1,
+                "song_name": "稻香",
+                "singers": "周杰伦",
+                "album": "魔杰座",
+                "ext": "flac",
+                "file_size": "24.81 MB",
+                "duration": "00:03:43",
+                "source": "GDStudioMusicClient",
+                "root_source": "netease",
+            }
+        ]
+        output = io.StringIO()
+        with redirect_stdout(output):
+            MODULE.print_items(items)
+
+        self.assertIn("来源：GD 音乐台（网易云音乐）", output.getvalue())
 
     def test_shortlist_renumbers_sparse_candidates(self) -> None:
         catalog = {

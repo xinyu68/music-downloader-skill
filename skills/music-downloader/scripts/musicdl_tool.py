@@ -22,12 +22,6 @@ DEFAULT_SOURCES = (
     "QianqianMusicClient",
     "GDStudioMusicClient",
 )
-AUDIOBOOK_SOURCES = (
-    "XimalayaMusicClient",
-    "LRTSMusicClient",
-    "LizhiMusicClient",
-    "QingtingMusicClient",
-)
 SOURCE_DISPLAY_NAMES = {
     "MiguMusicClient": "咪咕音乐",
     "NeteaseMusicClient": "网易云音乐",
@@ -35,10 +29,6 @@ SOURCE_DISPLAY_NAMES = {
     "KuwoMusicClient": "酷我音乐",
     "QianqianMusicClient": "千千音乐",
     "GDStudioMusicClient": "GD 音乐台",
-    "XimalayaMusicClient": "喜马拉雅",
-    "LRTSMusicClient": "懒人听书",
-    "LizhiMusicClient": "荔枝",
-    "QingtingMusicClient": "蜻蜓 FM",
 }
 GDSTUDIO_ROOT_SOURCE_DISPLAY_NAMES = {
     "netease": "网易云音乐",
@@ -98,12 +88,9 @@ def save_json(path: Path, value: Any) -> None:
     temporary.replace(path)
 
 
-def parse_sources(
-    value: str | None,
-    default_sources: tuple[str, ...] = DEFAULT_SOURCES,
-) -> list[str]:
-    """解析音频源列表，并在保持顺序的同时去重。"""
-    values = [item.strip() for item in (value or ",".join(default_sources)).split(",")]
+def parse_sources(value: str | None) -> list[str]:
+    """解析音乐源列表，并在保持顺序的同时去重。"""
+    values = [item.strip() for item in (value or ",".join(DEFAULT_SOURCES)).split(",")]
     return list(dict.fromkeys(item for item in values if item))
 
 
@@ -138,11 +125,6 @@ def safe_filename_component(value: Any, fallback: str) -> str:
     text = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", text)
     text = re.sub(r"\s+", " ", text).strip(" .")
     return (text or fallback)[:80].rstrip(" .")
-
-
-def is_missing_text(value: Any) -> bool:
-    """判断上游文本字段是否为空或使用了常见空值占位符。"""
-    return str(value or "").strip().lower() in {"", "null", "none"}
 
 
 def build_unique_media_path(
@@ -180,21 +162,13 @@ def require_musicdl() -> tuple[Any, Any]:
     return musicdl, SongInfo
 
 
-def make_client(
-    sources: list[str],
-    output_dir: Path,
-    source_options: dict[str, dict[str, Any]] | None = None,
-) -> Any:
-    """创建匿名访问、限定音频源和输出目录的 musicdl 客户端。"""
+def make_client(sources: list[str], output_dir: Path) -> Any:
+    """创建匿名访问、限定音乐源和输出目录的 musicdl 客户端。"""
     musicdl_module, _ = require_musicdl()
     output_dir.mkdir(parents=True, exist_ok=True)
-    source_options = source_options or {}
     return musicdl_module.MusicClient(
         music_sources=sources,
-        init_music_clients_cfg={
-            source: {"work_dir": str(output_dir), **source_options.get(source, {})}
-            for source in sources
-        },
+        init_music_clients_cfg={source: {"work_dir": str(output_dir)} for source in sources},
     )
 
 
@@ -237,36 +211,6 @@ def song_to_record(song: Any, number: int) -> dict[str, Any] | None:
     return record
 
 
-def collection_to_record(collection: Any, number: int) -> dict[str, Any] | None:
-    """把 musicdl 的有声合集对象转换为包含可下载章节的候选记录。"""
-    raw_episodes = getattr(collection, "episodes", None)
-    if not isinstance(raw_episodes, list):
-        return None
-    episodes: list[dict[str, Any]] = []
-    for episode in raw_episodes:
-        record = song_to_record(episode, len(episodes) + 1)
-        if record is not None:
-            episodes.append(record)
-    if not episodes:
-        return None
-
-    fields = (
-        "source", "root_source", "song_name", "singers", "album",
-        "file_size_bytes", "file_size", "duration_s", "duration", "cover_url",
-        "identifier",
-    )
-    record = {field: json_safe(getattr(collection, field, None)) for field in fields}
-    record.update(
-        {
-            "number": number,
-            "item_type": "collection",
-            "episode_count": len(episodes),
-            "episodes": episodes,
-        }
-    )
-    return record
-
-
 def flatten_results(results: Any) -> list[Any]:
     """把 musicdl 按音乐源分组的结果展开为单一列表。"""
     if isinstance(results, dict):
@@ -274,22 +218,12 @@ def flatten_results(results: Any) -> list[Any]:
     return list(results or [])
 
 
-def create_catalog(
-    kind: str,
-    query: str,
-    sources: list[str],
-    songs: list[Any],
-    allow_collections: bool = False,
-) -> dict[str, Any]:
+def create_catalog(kind: str, query: str, sources: list[str], songs: list[Any]) -> dict[str, Any]:
     """创建不包含 Cookie 和认证请求头的短期候选清单。"""
     items: list[dict[str, Any]] = []
     skipped = 0
     for song in songs:
-        record = (
-            collection_to_record(song, len(items) + 1)
-            if allow_collections and getattr(song, "episodes", None)
-            else song_to_record(song, len(items) + 1)
-        )
+        record = song_to_record(song, len(items) + 1)
         if record is None:
             skipped += 1
         else:
@@ -318,25 +252,9 @@ def print_items(items: list[dict[str, Any]]) -> None:
             root_source = str(item["root_source"])
             root_name = GDSTUDIO_ROOT_SOURCE_DISPLAY_NAMES.get(root_source, root_source)
             source_name = f"{source_name}（{root_name}）"
-        if item.get("item_type") == "collection":
-            print(
-                f"{item['number']:>3}. {item.get('song_name') or '-'} | "
-                f"主播：{item.get('singers') or '-'} | "
-                f"可下载章节：{item.get('episode_count') or 0} | "
-                f"合计大小：{item.get('file_size') or '-'} | "
-                f"合计时长：{item.get('duration') or '-'} | "
-                f"来源：{source_name}"
-            )
-            continue
-        collection_text = (
-            f"有声书：{item.get('collection_title')} | "
-            if item.get("collection_title")
-            else ""
-        )
-        performer_label = "主播" if item.get("collection_title") else "歌手"
         print(
             f"{item['number']:>3}. {item.get('song_name') or '-'} | "
-            f"{collection_text}{performer_label}：{item.get('singers') or '-'} | "
+            f"歌手：{item.get('singers') or '-'} | "
             f"专辑：{item.get('album') or '-'} | "
             f"格式：{str(item.get('ext') or '-').upper()} | "
             f"大小：{item.get('file_size') or '-'} | "
@@ -384,48 +302,6 @@ def run_search(args: argparse.Namespace) -> int:
     save_json(catalog_path, catalog)
     print_items(catalog["items"])
     print(f"候选清单：{catalog_path}")
-    return 0 if catalog["items"] else 1
-
-
-def audiobook_source_options(sources: list[str]) -> dict[str, dict[str, Any]]:
-    """限制有声源候选数量，并优先搜索包含章节的专辑或书籍。"""
-    allowed_search_types = {
-        "XimalayaMusicClient": ["album"],
-        "LRTSMusicClient": ["book", "album"],
-        "LizhiMusicClient": ["album"],
-        "QingtingMusicClient": ["album"],
-    }
-    return {
-        source: {
-            "search_size_per_source": 2,
-            "search_size_per_page": 2,
-            **(
-                {"allowed_search_types": allowed_search_types[source]}
-                if source in allowed_search_types
-                else {}
-            ),
-        }
-        for source in sources
-    }
-
-
-def run_audiobook(args: argparse.Namespace) -> int:
-    """搜索有声书，并把书籍或专辑写入候选清单。"""
-    sources = parse_sources(args.sources, AUDIOBOOK_SOURCES)
-    output_dir = Path(args.output_dir).expanduser().resolve()
-    client = make_client(sources, output_dir, audiobook_source_options(sources))
-    collections = flatten_results(client.search(keyword=args.query))
-    catalog = create_catalog(
-        "audiobook",
-        args.query,
-        sources,
-        collections,
-        allow_collections=True,
-    )
-    catalog_path = Path(args.catalog).expanduser().resolve()
-    save_json(catalog_path, catalog)
-    print_items(catalog["items"])
-    print(f"有声书候选清单：{catalog_path}")
     return 0 if catalog["items"] else 1
 
 
@@ -481,45 +357,6 @@ def create_shortlist(catalog: dict[str, Any], selected_numbers: list[int]) -> di
     }
 
 
-def create_chapter_catalog(
-    catalog: dict[str, Any],
-    selected_numbers: list[int],
-) -> dict[str, Any]:
-    """展开所选有声合集中的章节，并生成连续编号的可下载清单。"""
-    chapters: list[dict[str, Any]] = []
-    for collection_number in selected_numbers:
-        collection = catalog["items"][collection_number - 1]
-        episodes = collection.get("episodes")
-        if collection.get("item_type") != "collection" or not isinstance(episodes, list):
-            raise ValueError(f"候选 {collection_number} 不是可展开的有声合集")
-        for chapter_number, episode in enumerate(episodes, start=1):
-            chapter = dict(episode)
-            if is_missing_text(chapter.get("singers")):
-                chapter["singers"] = collection.get("singers")
-            if is_missing_text(chapter.get("album")):
-                chapter["album"] = collection.get("song_name")
-            chapter["number"] = len(chapters) + 1
-            chapter["collection_number"] = collection_number
-            chapter["collection_title"] = collection.get("song_name")
-            chapter["chapter_number"] = chapter_number
-            chapters.append(chapter)
-
-    sources = list(
-        dict.fromkeys(str(item["source"]) for item in chapters if item.get("source"))
-    )
-    return {
-        "catalog_version": CATALOG_VERSION,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "kind": "chapters",
-        "parent_kind": catalog.get("kind"),
-        "query": catalog.get("query"),
-        "sources": sources,
-        "selected_collections": selected_numbers,
-        "skipped_non_url_items": 0,
-        "items": chapters,
-    }
-
-
 def run_shortlist(args: argparse.Namespace) -> int:
     """从完整候选清单生成连续编号的用户短名单。"""
     catalog_path = Path(args.catalog).expanduser().resolve()
@@ -536,22 +373,6 @@ def run_shortlist(args: argparse.Namespace) -> int:
     return 0
 
 
-def run_chapters(args: argparse.Namespace) -> int:
-    """展开用户选中的有声书候选，生成章节清单。"""
-    catalog_path = Path(args.catalog).expanduser().resolve()
-    output_path = Path(args.output).expanduser().resolve()
-    if output_path == catalog_path:
-        raise ValueError("章节清单输出路径不能覆盖有声书候选清单")
-
-    catalog = validate_catalog(load_json(catalog_path))
-    selected_numbers = parse_selection(args.select, len(catalog["items"]))
-    chapters = create_chapter_catalog(catalog, selected_numbers)
-    save_json(output_path, chapters)
-    print_items(chapters["items"])
-    print(f"章节清单：{output_path}")
-    return 0 if chapters["items"] else 1
-
-
 def run_download(args: argparse.Namespace) -> int:
     """重建所选歌曲信息并交给对应的 musicdl 客户端下载。"""
     catalog_path = Path(args.catalog).expanduser().resolve()
@@ -559,8 +380,6 @@ def run_download(args: argparse.Namespace) -> int:
     items = catalog["items"]
     selected_numbers = list(range(1, len(items) + 1)) if args.all else parse_selection(args.select, len(items))
     selected = [items[number - 1] for number in selected_numbers]
-    if any(item.get("item_type") == "collection" for item in selected):
-        raise ValueError("有声合集不能直接下载，请先使用 chapters 命令展开章节")
     sources = list(dict.fromkeys(str(item["source"]) for item in selected))
     output_dir = Path(args.output_dir).expanduser().resolve()
     client = make_client(sources, output_dir)
@@ -657,12 +476,6 @@ def build_parser() -> argparse.ArgumentParser:
     add_network_options(search)
     search.set_defaults(handler=run_search)
 
-    audiobook = subparsers.add_parser("audiobook", help="搜索有声书并写入书籍候选清单")
-    audiobook.add_argument("query", help="有声书、作者、主播或组合关键词")
-    audiobook.add_argument("--catalog", default="audiobook-search-results.json", help="有声书候选清单输出路径")
-    add_network_options(audiobook)
-    audiobook.set_defaults(handler=run_audiobook)
-
     playlist = subparsers.add_parser("playlist", help="把歌单解析为候选清单")
     playlist.add_argument("url", help="音乐平台歌单地址")
     playlist.add_argument("--catalog", default="music-playlist-results.json", help="候选清单输出路径")
@@ -674,12 +487,6 @@ def build_parser() -> argparse.ArgumentParser:
     shortlist.add_argument("--select", required=True, help="要保留的原始编号，例如 1,7,12,17")
     shortlist.add_argument("--output", default="music-shortlist.json", help="重新编号后的短名单输出路径")
     shortlist.set_defaults(handler=run_shortlist)
-
-    chapters = subparsers.add_parser("chapters", help="把所选有声书展开为章节清单")
-    chapters.add_argument("--catalog", required=True, help="有声书搜索或短名单文件")
-    chapters.add_argument("--select", required=True, help="要展开的有声书编号，例如 1 或 1,2")
-    chapters.add_argument("--output", default="audiobook-chapters.json", help="章节清单输出路径")
-    chapters.set_defaults(handler=run_chapters)
 
     download = subparsers.add_parser("download", help="下载候选清单中的指定项目")
     download.add_argument("--catalog", required=True, help="搜索或歌单命令生成的候选清单")

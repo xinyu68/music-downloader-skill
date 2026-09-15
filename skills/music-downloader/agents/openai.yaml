@@ -1,4 +1,4 @@
 interface:
   display_name: "音乐下载"
-  short_description: "匿名搜索音乐或有声书，列出候选后按编号选择下载"
-  default_prompt: "使用 $music-downloader 搜索我指定的歌曲或有声书，列出带格式和大小的候选让我回复编号后下载。"
+  short_description: "匿名搜索多个音乐源，列出格式、大小和时长后按编号选择下载"
+  default_prompt: "使用 $music-downloader 搜索我指定的歌曲，列出带格式和大小的候选让我回复编号后下载。"
